@@ -1,58 +1,32 @@
-# Privacy Policy for WezTerm
+# TermiAI 隐私说明
 
-No data about your device(s) or WezTerm usage leave your device.
+TermiAI 坚持本地优先：不内置遥测、不收集使用统计，终端内容与会话数据默认不离开你的设备。
 
-## Data Maintained by WezTerm
+## 本地数据
 
-WezTerm maintains some historical data, such as recent searches or action
-usage, in some of its overlays such as the debug overlay and character
-selector, in order to make your usage more convenient. It is used only
-by the local process, and care is taken to limit access for the associated
-files on disk to only your local user identity.
+- 配置、快捷键、会话记录、命令历史与滚动缓冲区等仅保存在本机，或仅存在于进程内存中。
+- SSH / SFTP 凭据与 AI API Key 仅保存在本机。TermiAI 承诺：AI API Key 使用 Windows DPAPI（Data Protection API）加密存储，不以明文写入配置或日志。
+- 上述数据不会上传至 TermiAI 项目方或任何云端。
 
-WezTerm tracks the output from the commands that you have executed in
-a scrollback buffer.  At the time of writing, that scrollback buffer
-is an in-memory structure that is not visible to other users of the machine.
-In the future, if wezterm expands to offload scrollback information to
-your local disk, it will do so in such a way that other users on the
-same system will not be able to inspect it.
+## AI 功能与第三方服务
 
-## macOS and Data permissions
+- 只有当你主动使用 AI 功能时，TermiAI 才会将完成该次请求所必需的上下文（例如当前命令、报错输出、你显式 `@` 指定的会话内容）发送到你自行配置的模型服务（OpenAI、Anthropic 或兼容端点）。
+- 请求由本机直接发往你配置的服务地址，不经过 TermiAI 的中转服务器。
+- 数据在第三方服务端的处理方式取决于该服务商的隐私政策与你的账户设置，TermiAI 无法控制。
+- TermiAI 不会将你的终端内容用于训练模型，也不会将其分享给模型服务商之外的第三方。
+- AI 能力上线后，将在设置中提供关闭开关与清除本地密钥的入口。
 
-On macOS, when a GUI application that has a "bundle" launches child processes
-(eg: WezTerm, running your shell, and your shell running the programs which you
-direct it to run), any permissioned resource access that may be attempted by
-those child processes will be reported as though WezTerm is attempting to
-access those resources.
+## SFTP 与 SSH
 
-The result is that from time to time you may see a dialog about WezTerm
-accessing your Contacts if run a `find` command that happens to step through
-the portion of your filesystem where the contacts are stored.  Or perhaps you
-are running a utility that accesses your camera; it will appear as though
-WezTerm is accessing those resources, but it is not: there is no logic within
-WezTerm to attempt to access your contacts, camera or any other sensitive
-information.
+- SFTP 复用本地 SSH 认证信息，传输内容仅在你的设备与目标服务器之间流动。
+- TermiAI 不代理、不记录你的文件内容。
 
-## Update Checking
+## 版本更新检查
 
-By default, once every 24 hours, wezterm makes an HTTP request to GitHub's
-release API in order to determine if a newer version is available and to
-notify you if that is the case.
+- 当前版本继承上游 WezTerm 的更新检查逻辑：默认每 24 小时向 GitHub Release API 发起一次请求，仅用于判断是否有新版本。
+- 可通过配置项 `check_for_updates = false` 关闭（沿用上游配置体系；TermiAI 后续将替换为自有发布通道）。
+- 该请求不包含终端内容或个人身份信息，项目方无法从中推断你的使用情况。
 
-The content of that request is private between your machine and GitHub.  The
-contributors to WezTerm cannot see inside that request and therefore cannot
-infer any information from it.
+## 第三方构建
 
-If you wish, you can disable update checking. See
-https://wezterm.org/config/lua/config/check_for_updates.html for
-more information on that.
-
-## Third-Party Builds
-
-The above is true of the wezterm source code and the binaries produced by
-wezterm's CI and made available from https://wezterm.org/ and
-https://github.com/wezterm/wezterm/.
-
-If you obtained a pre-built wezterm binary from some other source be aware that
-the person(s) building those versions may have modified them to behave
-differently from the source version.
+如果你从非官方渠道获取 TermiAI 二进制，构建者可能修改了其行为。本说明仅适用于本仓库源码及官方发布产物。

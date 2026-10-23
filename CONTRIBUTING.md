@@ -1,184 +1,84 @@
-# Contributing to wezterm
+# 参与 TermiAI 开发
 
-Thanks for considering donating your time and energy!  I value any contribution,
-even if it is just to highlight a typo.
+感谢你愿意为 TermiAI 贡献时间与代码。本文面向在本仓库工作的开发者，说明开发环境、代码结构与协作约定。
 
-Included here are some guidelines that can help streamline taking in your contribution.
-They are just guidelines and not hard-and-fast rules. Things will probably go faster
-and smoother if you have the time and energy to read and follow these suggestions.
+> TermiAI 是 [WezTerm](https://github.com/wezterm/wezterm) 的二次开发分支。与 TermiAI 产品形态无关的通用改进，建议直接提交到上游仓库；与本项目相关的功能、界面与 AI 能力开发在本仓库进行。
 
-## Contributing Documentation
+## 一、开发环境
 
-There's never enough!  Pretty much anything is fair game to improve here.
+### 目标平台
 
-### Running the doc build yourself
+TermiAI 只面向 Windows 10 1809+ / Windows 11（x86_64）。Linux 与 macOS 代码虽继承自上游，但不在维护范围内，不保证可构建或可运行。
 
-To check your documentation additions, you can optionally build the docs yourself and see how the changes will look on the webpage. 
+### 依赖
 
-To serve them up, and then automatically rebuild and refresh the docs in your browser, run:
-```console
-$ ci/build-docs.sh serve
-```
-And then click on the URL that it prints out after it has performed the first build.
+- [Rust](https://rustup.rs/) 稳定版工具链，必须使用 **MSVC** 版本
+- Visual Studio Build Tools（含“使用 C++ 的桌面开发”工作负载）
+- [Strawberry Perl](https://strawberryperl.com/)：编译 OpenSSL 所需，需保证其 `perl.exe` 在 `PATH` 中优先于其他 Perl
+- Git（含子模块）
 
-Any arguments passed to `build-docs.sh` are passed down to the underlying `mkdocs` utility.
+### 首次构建
 
-Look at [mkdocs serve](https://www.mkdocs.org/user-guide/cli/#mkdocs-serve) for more information on additional parameters.
+```powershell
+git submodule update --init --recursive
+$env:PATH = "C:\Strawberry\perl\bin;$env:PATH"
 
-### Operating system specific installation instructions?
-
-There are a lot of targets out there.  Today we have docs that are Ubuntu biased
-and I know that there are a lot of flavors of Linux. Rather than expand the README
-with instructions for those, please translate the instructions into steps that
-can be run in the [`get-deps`](https://github.com/wezterm/wezterm/blob/master/get-deps)
-script.
-
-## Contributing code
-
-Yes please!
-
-If you are new to the Rust language check out <https://doc.rust-lang.org/rust-by-example/>.
-
-### Building from source
-
-To build wezterm from source, you will need a local Rust toolchain, and a few platform-specific dependencies.
-Follow the [Install from Source](https://wezfurlong.org/wezterm/install/source.html) guide to get started!
-
-Some platforms like Windows have a few specific steps, make sure to check the dedicated sections in the guide.
-
-### Where to find things?
-
-The `term` directory holds the core terminal model code. This is agnostic
-of any windowing system. If you want to add support for terminal escape
-sequences and that sort of thing, you probably want to be in the `term` directory.
-Keep in mind that for maximal compatibility and utility `wezterm` aims to
-be compatible with the `xterm` behavior.
-https://invisible-island.net/xterm/ctlseqs/ctlseqs.html is a useful resource!
-
-The `src` directory holds the code for the `wezterm` program. This is
-the GUI renderer for the terminal model.  If you want to change something
-about the GUI you want to be in the `src` dir.
-
-### Iterating
-
-I tend to iterate and sanity check as I develop using `cargo check`; it
-will type-check your code without generating code which is much faster
-than building everything in release mode:
-
-```console
-$ cargo check
+cargo check                                  # 快速类型检查
+cargo build --release --bin wezterm-gui      # 构建 GUI
+cargo run --release --bin wezterm -- start   # 构建并启动
 ```
 
-Likewise, if you want to quickly check that something works, you can run it
-in debug mode using:
+## 二、代码结构
 
-```console
-$ cargo run
-```
+| 目录 | 职责 |
+| --- | --- |
+| `term/` | 终端模型，与窗口系统无关；转义序列、终端行为相关改动通常在此 |
+| `wezterm-gui/` | 当前 GUI 渲染与交互实现，继承自上游 |
+| `window/` | 窗口、输入与 GPU 上下文抽象 |
+| `mux/`、`wezterm-client/`、`wezterm-mux-server/` | 多路复用与远程会话 |
+| `wezterm-ssh/` | SSH 与 SFTP 底层封装 |
+| `config/`、`lua-api-crates/` | 配置系统与 Lua API |
+| `wezterm/` | CLI 入口与启动器 |
+| `TermiAI-docs/` | 产品需求与设计文档 |
 
-This will produce a debug-instrumented binary with poor optimization. This will
-give you more detail in the backtrace produced if you run `RUST_BACKTRACE=1 cargo run`.
+TermiAI 新增能力（AI 接入、WinUI 3 宿主、SFTP 界面等）应尽量放在独立 crate 或边界清晰的模块中，避免对上游核心做大范围改写，以便持续合并上游更新。
 
-If you get a panic and want to examine local variables, you'll need to use gdb:
+## 三、开发约定
 
-```console
-$ cargo build
-$ gdb ./target/debug/wezterm
-$ break rust_panic               # hit tab to complete the name of the panic symbol!
-$ run
-$ bt
-```
+### 1. 与上游同步
 
-Starting WezTerm with `wezterm-gui start --always-new-process` is useful to ensure Mux logs are not
-hidden in an background process started in an earlier test.
+- 不随意重命名、移动上游 crate 或公开 API；确需修改时，在 PR 中说明其对后续合并上游的影响。
+- 新增依赖优先复用 `Cargo.toml` 中 workspace 已锁定的版本。
+- 定期合并上游 `main`，冲突处理保持最小 diff；纯格式化改动不要与功能改动混在同一提交。
 
-Start WezTerm with `wezterm-gui --config-file ./test-conf.lua ……` to test a custom config file.
+### 2. 安全红线（AI 与凭据相关）
 
+- AI API Key 必须通过 Windows DPAPI 加密后落盘，禁止以明文写入配置文件、日志或崩溃报告。
+- 未经用户明确触发，不得向任何外部服务发送终端内容、文件内容或会话元数据；项目不内置遥测。
+- AI 生成的高危命令（如 `rm -rf`、`drop database`）必须经过二次人工确认，禁止默认自动执行。
+- 发送给模型服务的上下文应最小化并按需截断；日志输出需脱敏。
 
-### Please include tests to cover your changes!
+### 3. 代码质量
 
-This will help ensure that your contributions keep working as things change.
+- 提交前运行：
 
-You can run the existing tests using:
+  ```powershell
+  cargo fmt --all
+  cargo test --all
+  ```
 
-```console
-$ cargo test --all
-```
+- 终端行为变更需补充测试，可参考 `term/src/test/` 中已有的测试辅助代码。
+- 新增代码的注释与用户文档使用中文；修改上游代码时保留原有英文注释。
+- 新增或改变用户可见行为时，同步更新 `TermiAI-docs/` 中的相关文档。
 
-There are some helper classes for writing tests for terminal behavior.
-Here's [an example of a test to verify that the terminal contents
-match expectations](https://github.com/wezterm/wezterm/blob/fd532a8c2fb3b56593597cf8be1775da1feda0a3/term/src/test/mod.rs#L314).
+## 四、提交流程
 
-Please also make a point of adding comments to your tests to help
-clarify the intent of the test!
+1. 从 `main` 拉出功能分支，保持提交聚焦、信息清晰。
+2. PR 描述中写清动机、行为变化与验证方式；涉及界面变更请附截图或录屏。
+3. 不要在 PR 中提交密钥、证书、个人配置或本地构建产物。
+4. 通过 CI 与代码评审后合并。
 
-### Testing in a NixOS VM
+## 五、文档
 
-If you need to test WezTerm in a clean desktop environment (e.g. to reproduce a
-display server bug or verify a desktop integration), you can use the provided
-NixOS VM configurations.
-
-Two desktop variants are available:
-- GNOME (`testing-on-gnome`)
-- KDE Plasma (`testing-on-plasma`).
-
-**Prerequisites:** Nix is installed, with flakes enabled (`experimental-features = nix-command flakes`).
-
-**Workflow:**
-
-```console
-$ cargo build                                            # build wezterm locally
-$ nixos-rebuild build-vm --flake ./nix#testing-on-plasma # build the Plasma VM image
-$ REPO=$PWD ./result/bin/run-nixos-vm                    # start the VM
-```
-
-> [!NOTE]
-> You might need to tweak desktop settings (e.g. the keyboard layout) on first VM start.
->
-> The VM state is stored in `nixos.qcow2` in the current working directory on the host.
-
-Inside the VM, open a terminal (e.g. _Console_ on GNOME, _Konsole_ on Plasma), then:
-
-```console
-$ cd repo                      # go into ~/repo
-$ ./target/debug/wezterm-gui   # run wezterm for your tests
-```
-
-The host repository is mounted into the VM at `/home/dev/repo` via a 9p shared directory,
-so changes on the host (rebuilds, test config file, ..) are immediately visible inside the VM.
-
-Keep the VM running and make your changes locally, re-build wezterm on your host and kill/start
-wezterm again in the VM for your tests.
-
-> [!WARNING]
-> The host repo is supposed to be mounted in read-write but I (@bew) don't know why changes in the
-> repo are not actually propagated to the host. (PR welcome!)
-
-### Please also include documentation if you are adding or changing behavior
-
-This helps to keep things well-understood and working in the long term.
-Don't worry if you're not a wordsmith or English isn't your first language as
-I can help with that. It is more important to capture the intent of the
-feature and having this written out in English also helps when it comes
-to reviewing the code.
-
-## Submitting a Pull Request
-
-After considering all of the above, and once you've prepared your contribution
-and are ready to submit it, you'll need to create a pull request.
-
-If you're new to GitHub Pull Requests, read through
-https://help.github.com/articles/creating-a-pull-request/ to understand
-how the process works.
-
-### Before you submit your code
-
-Make sure that the tests are working and that the code is correctly
-formatted otherwise the continuous integration system will fail your build:
-
-```console
-$ rustup component add rustfmt-preview          # you only need to do this once
-$ cargo test --all
-$ cargo fmt --all
-```
-
+- `TermiAI-docs/` 是产品文档目录，PRD 与设计说明以这里为准。
+- `docs/` 是继承自上游 WezTerm 的 mkdocs 站点源码，当前不作为 TermiAI 官方文档对外发布。如需本地预览，可按上游方式执行 `ci/build-docs.sh serve`（需要类 Unix 环境，如 WSL 或 Git Bash）。

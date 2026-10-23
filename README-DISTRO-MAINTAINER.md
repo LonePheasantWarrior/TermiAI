@@ -1,95 +1,48 @@
-# Notes for distro maintainers
+# TermiAI 构建与分发说明
 
-`ci/deploy.sh` is a script that is used to build packages in wezterm's CI.
-It is likely a bit more coarse than most distros would want in their
-official packages, but it should give a sense of what is intended to go where.
+本文件原为上游 WezTerm 面向 Linux 发行版打包者的说明。TermiAI 的目标平台是 Windows 10 / 11，不再提供 Linux / macOS 发行版包，原 distro 打包流程不适用。这里改为记录本项目的构建与分发约定。
 
-## Versioning
+## 目标平台
 
-WezTerms version number is derived from the date of the commit from which it
-was released:
+- Windows 10 1809（10.0.17763）及以上 / Windows 11，x86_64
+- Linux 与 macOS 的源码继承自上游，但不在维护范围内，不保证构建与运行
 
-```
-git -c "core.abbrev=8" show -s "--format=%cd-%h" "--date=format:%Y%m%d-%H%M%S"
-```
+## 构建产物
 
-If you are not building wezterm from its git repo, wezterm will read a file named
-`.tag` in the root of its source tree to determine the version.
+| 产物 | 说明 | 状态 |
+| --- | --- | --- |
+| `wezterm.exe` | CLI 与启动器 | 继承上游，品牌化待定 |
+| `wezterm-gui.exe` | GUI 终端进程 | 继承上游，WinUI 3 宿主接入后替换 |
+| `wezterm-mux-server.exe` | 多路复用服务端 | 继承上游 |
+| `strip-ansi-escapes.exe` | 去除 ANSI 转义的工具 | 继承上游 |
 
-Please package using the `wezterm-YYYYMMDD-HHMMSS-HASH-src.tar.gz` release
-asset from the release, rather than the automatic GitHub source tarball.
-Not only is it a smaller download, but it already contains an appropriate
-`.tag` file with the release version baked into it.
+品牌化（可执行文件名、图标、关于信息）尚未完成，当前产物名称沿用上游。
 
-If you must decorate wezterm's version, then it is recommend that you append
-your supplemental extra version information on the end of the wezterm's
-version.
+## 构建
 
-For example: `YYYYMMDD-HHMMSS-HASH-EXTRA`.
+环境要求与源码构建步骤见 [README.md](README.md) 与 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-If `-` is illegal in your package management system, then it is recommended
-that you substitute either `.` or `_` to separate the portions of the version
-string.
-
-## Binaries
-
-* `wezterm-mux-server` - multiplexer server. No gui required. Likely want this
-  in a separate package from `wezterm-gui` so it can run on a headless system.
-* `wezterm-gui` - the GUI portion of the terminal
-* `wezterm` - the CLI and frontend that knows how to launch the GUI. It is
-  desirable to have this available to both the multiplexer server and the gui.
-* `strip-ansi-escapes` - a utility that can filter escapes out of stdin; useful
-  for de-fanging text when composing eg: OSC 0/1 title text.
-
-## Additional Resources
-
-* `assets/shell-integration`, `assets/shell-completion`: should be deployed along with the `wezterm` executable
-* `assets/wezterm.desktop`, `assets/wezterm.appdata.xml`, `assets/wezterm-nautilus.py`: should be deployed along with `wezterm-gui`
-
-## Building wezterm
-
-It is recommended that you enable the `distro-defaults` rust feature
-when building for a distro (`cargo build --release -p wezterm-gui --features distro-defaults`).
-
-It has the following effects:
-
-* `check_for_updates` will default to `false`
-
-### Un-bundling vendored fonts
-
-By default, wezterm will compile in a handful of fonts in order to provide a
-consistent out of the box experience on all platforms with minimal installation
-hassle.
-
-If your distribution offers those fonts as installable packages, then it is
-recommended that you skip compiling in that font by disabling the associated
-feature:
-
-* `vendor-nerd-font-symbols-font` - causes [Symbols Nerd Font
-  Mono](https://github.com/ryanoasis/nerd-fonts/blob/master/patched-fonts/NerdFontsSymbolsOnly/complete/Symbols-1000-em%20Nerd%20Font%20Complete%20Mono.ttf)
-  to be compiled in.
-* `vendor-jetbrains-font` - causes `JetBrains Mono` to be compiled in
-* `vendor-roboto-font` - causes `Roboto` to be compiled in
-* `vendor-noto-emoji-font` - causes `Noto Color Emoji` to be compiled in.
-* `vendored-fonts` - causes all of the above `vendor-*-font` features to be enabled
-
-Note that wezterm requires at least the following fonts to be available, either
-on the system or built-in, in its default configuration, in order to start
-correctly:
-
-* `JetBrains Mono`
-* `Roboto`
-
-If there are other behaviors that you'd like to change from the default, please
-raise issue(s) for them so that we can figure out how to make it easier for you
-to maintain your wezterm package.
-
-### Building without wayland support
-
-If your distro doesn't include any support for Wayland, you will need to
-disable that feature when you build wezterm:
-
-```
-cargo build --release -p wezterm-gui --no-default-features --features distro-defaults,vendored-fonts
+```powershell
+$env:PATH = "C:\Strawberry\perl\bin;$env:PATH"
+cargo build --release
 ```
 
+构建产物位于 `target\release\`。如只需 GUI：
+
+```powershell
+cargo build --release --bin wezterm-gui
+```
+
+## 版本号
+
+当前沿用上游由 git 提交时间生成的版本号机制（`wezterm-version` crate）。TermiAI 的独立版本号方案尚未确定，确定后再更新本文件。
+
+## 分发
+
+- 目前尚无官方安装包，仅支持从源码构建。
+- 后续计划：完成品牌化资源替换，产出带签名的 Windows 安装包，并建立独立发布通道。
+- 在品牌化完成前，`assets/shell-integration`、`assets/shell-completion` 等资源继续沿用上游。
+
+## 许可证
+
+TermiAI 以 MIT 协议开源，保留上游 WezTerm 的版权与许可声明，详见 [LICENSE.md](LICENSE.md)。
