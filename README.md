@@ -69,6 +69,7 @@ cargo fmt --all      # 统一代码格式
 ## 文档
 
 - [TermiAI 产品需求文档（PRD）](<TermiAI-docs/TermiAI 产品需求文档 (PRD).md>)：产品定位、功能范围与交互设计
+- [功能开发文档](TermiAI-docs/功能开发文档/README.md)：P0 至 P7 的阶段路线、模块边界与验收标准
 - [CONTRIBUTING.md](CONTRIBUTING.md)：开发环境、代码结构与协作约定
 - [PRIVACY.md](PRIVACY.md)：本地数据、AI 调用与第三方服务的隐私说明
 - [README-DISTRO-MAINTAINER.md](README-DISTRO-MAINTAINER.md)：构建产物与分发说明
